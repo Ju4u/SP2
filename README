@@ -1,0 +1,14 @@
+for switching LVs:
+
+1. adjust lv_matrix (in modes function, line 61)
+2. adjust wgt_matrix (only if n_lv is changing)
+3. adjust labels (in plots function, line 414)
+4. adjust n_neurons (if n_lv is changing)
+
+
+
+#ABLAGE
+
+#calc phase shift off r
+r = 0.72
+phi = np.degrees(np.arccos(np.clip(r, -1, 1)))

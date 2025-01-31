@@ -6,6 +6,7 @@ import time
 from mpl_toolkits.axes_grid1 import make_axes_locatable as mal
 from scipy.interpolate import make_interp_spline as mis
 from scipy.stats import norm
+from scipy import stats
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from tqdm import tqdm
@@ -146,14 +147,28 @@ def bootstrap(data):
     return data_shuffled
 
 
-def statistics(evr_data, datapoint):
+def statistics(evr_data, datapoint, PC_data, LV_data, n_lv):
     stdev = np.std(evr_data, axis=1)
     mean = np.mean(evr_data, axis=1)
 
     d = norm(loc=mean, scale=stdev)
     alpha = 1 - d.cdf(datapoint)
 
-    return mean, stdev, alpha
+    #calc pearson ccs and p-values of PC (rows) and LV (columns)
+    pv_lv_corr = np.zeros((n_lv, n_lv))
+    pv_lv_p = np.zeros((n_lv, n_lv))
+
+    for i in range(n_lv): #i = rows of PC
+        for j in range(n_lv): #j = rows of LV
+            #pearson r
+            corr, _ = stats.pearsonr(PC_data[i], LV_data[j])
+            pv_lv_corr[i, j] = corr
+
+            #p-value of r
+            _, p_value = stats.pearsonr(PC_data[i], LV_data[j])
+            pv_lv_p[i, j] = p_value
+
+    return mean, stdev, alpha, pv_lv_corr, pv_lv_p
 
 
 def multiple_poisson_generator(pars, myseed=False):
@@ -242,12 +257,12 @@ def bin_spike_times(pars, num_bins, data):
     return count_modes_avg, count_trials_avg
 
 
-def matrices(count_st):
+def matrices(data):
     #compute var/cov calcs
-    CVM = np.cov(count_st, ddof=1)
+    CVM = np.cov(data, ddof=1)
 
     #calc pearson coefficients
-    corr_matrix = np.corrcoef(count_st)
+    corr_matrix = np.corrcoef(data)
 
     return CVM, corr_matrix
 
@@ -325,6 +340,10 @@ def plots(pars,
 
     alpha = 1 / pars['trials']
 
+    #axis labels
+    xlabels = ['Steady State', 'Ramp', 'Sine', 'Shifted Sine']
+    ylabels = ['N 1-40', 'N 41-80', 'N 81-120', 'N121-160']
+
     #smooting indicator
 
     # Plot primary y-axis (raster plot)
@@ -352,9 +371,13 @@ def plots(pars,
 
     axs[0, 0].set_title(f"N = {pars['n_neurons']},"
                         f" Neurons per LV = {pars['n_neurons'] // lv_matrix.shape[1]},"
-                        f" Trials per Neuron = {pars['trials']},\n"
+                        f" Trials per Neuron = {pars['trials']},"
                         f" Noise amp = {pars['noise_amp']}",
-                        fontsize=30)
+                        fontsize=20)
+
+    axs[0, 0].text(0.5, 1.05, 'Simulation spike trains with latent variables',
+                   ha='center', va='bottom', fontsize=30,
+                   transform=axs[0, 0].transAxes)
     axs[0, 0].set_xlabel('Time (ms)', fontsize=20)
     axs[0, 0].set_ylabel('Neuron ID', fontsize=20)
     #axs[0, 0].legend(loc="upper left")
@@ -368,7 +391,7 @@ def plots(pars,
         spl = mis(x_counts, count_modes_avg[i, :], k=5)
         y_smooth = spl(x_smooth)
         y2.plot(x_smooth, y_smooth,
-                label=f"count_modes_avg{i + 1}",
+                label=f"{xlabels[i]}",
                 color=colors_avg_spikes[i],
                 linewidth=5)
 
@@ -377,7 +400,7 @@ def plots(pars,
     y2.set_ylabel('Spike counts', fontsize=20)
 
     y2.tick_params(axis='y', labelsize=20)
-    #y2.legend(loc="upper right")
+    y2.legend(loc="upper right", fontsize=20)
 
     print('Plotting the rest...')
 
@@ -443,8 +466,6 @@ def plots(pars,
 
     #Axis settings
     ticks = np.arange(0, lv_matrix.shape[1], 1)
-    xlabels = ['Steady State', 'Ramp', 'Sine', 'Shifted Sine']
-    ylabels = ['N 1-40', 'N 41-80', 'N 81-120', 'N121-160']
 
     axs[0, 1].set_xticks(ticks)
     axs[0, 1].set_yticks(ticks)
@@ -461,7 +482,7 @@ def plots(pars,
 
     for i in range(5):  #principal_components.shape[0]
         axs[2, 0].plot(x, principal_components[i],
-                       label=f"Principal component {i + 1}",
+                       label=f"Principal component {i + 1}, pearson = ", #{pearson[i]}
                        linewidth=5,
                        color=colors_avg_spikes[i])
         #               alpha=1/principal_components.shape[0])
@@ -595,196 +616,3 @@ def plots(pars,
     # fig.savefig(filename)
 
     plt.show()
-
-
-
-def main(shuffle_loc):
-    ### 0: PREP
-    start = time.perf_counter()
-    pars = default_pars()
-    seed = False
-    bin_size = pars['bin_size']  # in ms
-    num_bins = pars['T'] // bin_size
-
-    #init evr arrays
-    evr_boot_acc = np.zeros((num_bins, pars['n_it']))  # (80, 100)
-    evr_boot_cumsum_acc = np.zeros((num_bins, pars['n_it']))  # (80, 100)
-
-    evr_boot_mean = np.zeros((num_bins,))           # (80,)
-    evr_boot_stdev = np.zeros((num_bins,))          # (80,)
-    evr_boot_cumsum_mean = np.zeros((num_bins,))    # (80,)
-    evr_boot_cumsum_stdev = np.zeros((num_bins,))   # (80,)
-    evr_p = np.zeros((num_bins,))               # (80,)
-    evr_cumsum_p = np.zeros((num_bins,))        # (80,)
-
-    ### 1: SPIKE GENERATION
-    lv_matrix, wgt_matrix = modes(pars)
-    acc_spike_trains = multiple_poisson_generator(pars, myseed=seed)
-
-    if shuffle_loc == 1:
-        title = 'bin --> smooth --> shuffle'
-        ### 2: BINNING
-        count_modes_avg, count_trials_avg = bin_spike_times(pars, num_bins, data=acc_spike_trains)
-
-        ### 3: SMOOTHING
-        count_trials_avg_smt = smoothing(pars, data=count_trials_avg)
-
-        ### 4: SHUFFLING & PCA
-
-        #init shuffled mode count array
-        count_modes_avg_shf_acc = np.zeros(count_modes_avg.shape)
-
-        for i in tqdm(range(pars['n_it']), desc="Analyzing", unit="step"):
-            #trials
-            count_trials_avg_smt_shf = bootstrap(data=count_trials_avg_smt)
-
-            #modes
-            count_modes_avg_smt_shf = bootstrap(data=count_modes_avg)
-            count_modes_avg_shf_acc += count_modes_avg_smt_shf
-
-            #pca (evr_boot)
-            _, evr_boot, evr_boot_cumsum = pca(data=count_trials_avg_smt_shf)
-            evr_boot_acc[:, i] = evr_boot
-            evr_boot_cumsum_acc[:, i] = evr_boot_cumsum
-
-        #average modes array
-        count_modes_avg_shf = count_modes_avg_shf_acc / pars['n_it']
-
-        ### 5:  PCA (un-shuffled)
-        principal_components, evr_uns, evr_uns_cumsum = pca(data=count_trials_avg_smt)
-
-        #generate statistics arrays
-        evr_boot_mean, evr_boot_stdev, evr_p = statistics(evr_boot_acc, evr_uns)
-        evr_boot_cumsum_mean, evr_boot_cumsum_stdev, evr_cumsum_p = statistics(evr_boot_cumsum_acc, evr_uns_cumsum)
-
-
-    elif shuffle_loc == 2:
-        title = 'bin --> shuffle --> smooth'
-        ### 2: BINNING
-        count_modes_avg, count_trials_avg = bin_spike_times(pars, num_bins, data=acc_spike_trains)
-
-        ### 3: SHUFFLING, SMOOTHING & PCA
-        # init shuffled mode count array
-        count_modes_avg_shf_acc = np.zeros(count_modes_avg.shape)
-
-        for i in tqdm(range(pars['n_it']), desc="Analyzing", unit="step"):
-            # trials
-            count_trials_avg_shf = bootstrap(data=count_trials_avg)
-
-            #smoothen
-            count_trials_avg_shf_smt = smoothing(pars, data=count_trials_avg_shf)
-
-            # modes
-            count_modes_avg_shf = bootstrap(data=count_modes_avg)
-            count_modes_avg_shf_acc += count_modes_avg_shf
-
-            # pca (evr_boot)
-            _, evr_boot, evr_boot_cumsum = pca(data=count_trials_avg_shf_smt)
-            evr_boot_acc[:, i] = evr_boot
-            evr_boot_cumsum_acc[:, i] = evr_boot_cumsum
-
-        # average modes array
-        count_modes_avg_shf = count_modes_avg_shf_acc / pars['n_it']
-
-        #smoothen un-shuffled data
-        count_trials_avg_smt = smoothing(pars, data=count_trials_avg)
-
-        ### 5:  PCA (un-shuffled)
-        principal_components, evr_uns, evr_uns_cumsum = pca(data=count_trials_avg_smt)
-
-        # generate statistics arrays
-        evr_boot_mean, evr_boot_stdev, evr_p = statistics(evr_boot_acc, evr_uns)
-        evr_boot_cumsum_mean, evr_boot_cumsum_stdev, evr_cumsum_p = statistics(evr_boot_cumsum_acc, evr_uns_cumsum)
-
-
-    elif shuffle_loc == 3:
-        title = 'shuffle --> bin --> smooth'
-
-        #un-shuffled data
-
-        #binning
-        count_modes_avg, count_trials_avg = bin_spike_times(pars, num_bins,
-                                                            data=acc_spike_trains)
-
-        #smoothing
-        count_trials_avg_smt = smoothing(pars, data=count_trials_avg)
-
-        #pca
-        principal_components, evr_uns, evr_uns_cumsum = pca(data=count_trials_avg_smt)
-
-        #init shuffle arrays
-        count_modes_avg_shf = np.zeros((count_modes_avg.shape))
-
-        ### 2: SHUFFLING, BINNING, SMOOTHING, PCA
-        for i in tqdm(range(pars['n_it']), desc="Analyzing", unit="step"):
-            acc_spike_trains_shf = bootstrap(data=acc_spike_trains)
-
-            #binning
-            count_modes_avg_shf, count_trials_avg_shf = bin_spike_times(pars, num_bins,
-                                                                                data=acc_spike_trains_shf)
-
-            #smoothing
-            count_trials_avg_shf_smt = smoothing(pars, data=count_trials_avg_shf)
-
-            #pca
-            _, evr_boot, evr_boot_cumsum = pca(data=count_trials_avg_shf_smt)
-            evr_boot_acc[:, i] = evr_boot
-            evr_boot_cumsum_acc[:, i] = evr_boot_cumsum
-
-            # generate statistics arrays
-            evr_boot_mean, evr_boot_stdev, evr_p = statistics(evr_boot_acc, evr_uns)
-            evr_boot_cumsum_mean, evr_boot_cumsum_stdev, evr_cumsum_p = statistics(evr_boot_cumsum_acc, evr_uns_cumsum)
-
-
-    else:
-        raise ValueError("Invalid shuffle_loc value. Must be 1, 2, or 3.")
-
-    # Calculate number of PCs explaining more variance than shuffled
-    npc = 0
-    for i in range(len(evr_uns)):
-        if evr_uns[i] > evr_boot_mean[i]:
-            npc += 1
-        else:
-            break
-    int_uns = evr_uns_cumsum[npc]
-    int_boot = evr_boot_cumsum_mean[npc]
-
-    #Calculate confidence thresholds
-    evr_boot_plus = evr_boot_mean + evr_boot_stdev
-    evr_boot_minus = evr_boot_mean - evr_boot_stdev
-
-    evr_boot_cumsum_plus = evr_boot_cumsum_mean + evr_boot_cumsum_stdev
-    evr_boot_cumsum_minus = evr_boot_cumsum_mean - evr_boot_cumsum_stdev
-
-    ### PLOTTING
-    x_counts = np.linspace(bin_size / 2, pars['T'] - bin_size / 2, num_bins)
-    CVM, corr_matrix = matrices(count_st=count_trials_avg)
-
-    plots(pars, range_t=pars['range_t'],
-          spike_trains=acc_spike_trains,
-          count_modes_avg=count_modes_avg,
-          x_counts=x_counts,
-          CVM=CVM,
-          corr_matrix=corr_matrix,
-          lv_matrix=lv_matrix,
-          principal_components=principal_components,
-          count_modes_boot_avg=count_modes_avg_shf,
-          evr_uns=evr_uns,
-          evr_uns_cumsum=evr_uns_cumsum,
-          evr_boot=evr_boot_mean,
-          evr_boot_cumsum=evr_boot_cumsum_mean,
-          evr_boot_plus=evr_boot_plus,
-          evr_boot_minus=evr_boot_minus,
-          evr_boot_cumsum_plus=evr_boot_cumsum_plus,
-          evr_boot_cumsum_minus=evr_boot_cumsum_minus,
-          n_it=pars['n_it'],
-          npc=npc,
-          int_uns=int_uns,
-          int_boot=int_boot,
-          title=title,
-          p=evr_p,
-          p_cumsum=evr_cumsum_p
-          )
-
-    end = time.perf_counter()
-    print(f"Finished! Elapsed time: {end - start:.2f} s")
