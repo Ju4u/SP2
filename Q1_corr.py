@@ -4,12 +4,15 @@ import time
 from scipy.stats import pearsonr
 from tqdm import tqdm
 import seaborn as sns
+from mpl_toolkits.mplot3d import Axes3D
+from scipy.linalg import svd
+
 
 from functions_Q1 import (default_pars, modes, smoothing, pca,
                            bootstrap, statistics, multiple_poisson_generator,
                            bin_spike_times, matrices, plots)
 
-n_it = 100
+n_it = 1
 lv_pc_corr = np.zeros((n_it, 2))
 
 for a in tqdm(range(n_it), desc="Iterating", unit="step", position=0, leave=True):
@@ -168,42 +171,43 @@ for a in tqdm(range(n_it), desc="Iterating", unit="step", position=0, leave=True
     #       pc_lv_corr=pc_lv_corr
     #       )
 
-corrmean_pc1 = np.mean(lv_pc_corr[:, 0])
-corrmean_pc2 = np.mean(lv_pc_corr[:, 1])
-np.save('lv_pc_corr_04.npy', lv_pc_corr)
 
-#exclude outliers
-# lv_pc_corr = lv_pc_corr[(lv_pc_corr >= 0).all(axis=1)]
+# corrmean_pc1 = np.mean(lv_pc_corr[:, 0])
+# corrmean_pc2 = np.mean(lv_pc_corr[:, 1])
+# np.save('lv_pc_corr_04.npy', lv_pc_corr)
 
-
-# Set a clean style with a color palette
-sns.set_theme(style="whitegrid", palette="pastel")
-
-plt.figure(figsize=(10, 5))
-
-# Plot first column with purple color, thinner bars, and lower alpha for heatmap effect
-sns.histplot(lv_pc_corr[:, 0], kde=True, binwidth=0.01, color='purple', label=f"PC1, mean = {corrmean_pc1:.3f}", alpha=0.1)
-
-# Plot second column with blue color, thinner bars, and lower alpha for heatmap effect
-sns.histplot(lv_pc_corr[:, 1], kde=True, binwidth=0.01, color='blue', label=f"PC2, mean = {corrmean_pc2:.3f}", alpha=0.1)
-
-# Adjusting labels and title
-plt.xlabel("Value", fontsize=14)
-plt.ylabel("Frequency", fontsize=14)
-plt.title(f"Distribution of PC_mins (r=0.41, N={lv_pc_corr.shape[0]})", fontsize=16, fontweight='bold')
-
-# Customizing legend
-plt.legend(title="Principal Components", loc="upper left", fontsize=12)
-
-# Make the grid less intrusive and improve ticks
-plt.grid(True, linestyle='--', alpha=0.5)
-plt.xticks(fontsize=12)
-plt.yticks(fontsize=12)
-plt.xlim(0.0, 1)
-
-# Show the plot
-plt.tight_layout()
-plt.show()
+# # exclude outliers
+# # lv_pc_corr = lv_pc_corr[(lv_pc_corr >= 0).all(axis=1)]
+#
+#
+# # Set a clean style with a color palette
+# sns.set_theme(style="whitegrid", palette="pastel")
+#
+# plt.figure(figsize=(10, 5))
+#
+# # Plot first column with purple color, thinner bars, and lower alpha for heatmap effect
+# sns.histplot(lv_pc_corr[:, 0], kde=True, binwidth=0.01, color='purple', label=f"PC1, mean = {corrmean_pc1:.3f}", alpha=0.1)
+#
+# # Plot second column with blue color, thinner bars, and lower alpha for heatmap effect
+# sns.histplot(lv_pc_corr[:, 1], kde=True, binwidth=0.01, color='blue', label=f"PC2, mean = {corrmean_pc2:.3f}", alpha=0.1)
+#
+# # Adjusting labels and title
+# plt.xlabel("r(PC-LV)", fontsize=20)
+# plt.ylabel("Frequency", fontsize=20)
+# plt.title(f"Distribution of PC_mins (r=0.41, N={lv_pc_corr.shape[0]})", fontsize=30, fontweight='bold')
+#
+# # Customizing legend
+# plt.legend(title="Principal Components", loc="upper left", fontsize=20)
+#
+# # Make the grid less intrusive and improve ticks
+# plt.grid(True, linestyle='--', alpha=0.5)
+# plt.xticks(fontsize=20)
+# plt.yticks(fontsize=20)
+# plt.xlim(0.0, 1)
+#
+# # Show the plot
+# plt.tight_layout()
+# plt.show()
 
 
 

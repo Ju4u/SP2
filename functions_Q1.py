@@ -25,9 +25,9 @@ def default_pars(**kwargs):
     pars['n_neurons'] = 80
     pars['bin_size'] = 100
     pars['trials'] = 100
-    pars['noise_amp'] = 20
+    pars['noise_amp'] = 0
     pars['n_it'] = 100
-    pars['window_size'] = 1
+    pars['window_size'] = 3
     pars['r'] = 0.0
 
     #Weights for LVs
@@ -55,7 +55,7 @@ def modes(pars, num_seeds=10):
     rates_sin = 10 * np.sin(x) + pars['init_rate']
 
     #3 shifted sines
-    rates_ssin = 10 * np.sin(x + (np.pi / 2)) + pars['init_rate']
+    rates_ssin = 8 * np.sin(x + (np.pi / 2)) + pars['init_rate']
     rates_sssin = 1000 * np.sin(x + (np.pi / 4)) + pars['init_rate']
 
     #2 ramp
@@ -85,8 +85,8 @@ def modes(pars, num_seeds=10):
     #stacking
     lv_matrix = np.stack([rates_sin, rates_ssin], axis=1)#, rates_sdy, rates_rmp], axis=1)
 
-    #new LV matrix
-    lv_matrix = np.load('q1ab_latent_data00.npy')
+    # #new LV matrix
+    # lv_matrix = np.load('latent_data00.npy')
 
     #Weight matrix
     n_lv = lv_matrix.shape[1]
@@ -287,89 +287,6 @@ def matrices(data):
     return CVM, corr_matrix
 
 
-# def plots(pars, range_t, spike_trains, count_modes_avg, x_counts, title, lv_matrix):
-#     # Initiate figure
-#     fig, axs = plt.subplots(1, 2, figsize=(30, 50))  #30, 40 for N=100
-#     fig.suptitle(f'{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())}\n'
-#                  f'{title}', fontsize=40)
-#
-#     # Adjust subplot spacing
-#     plt.subplots_adjust(hspace=0.2)
-#     plt.subplots_adjust(wspace=0.5)
-#
-#     #Create colormap for plot coloring
-#     cmap = plt.cm.get_cmap('viridis', pars['n_neurons'])
-#     colors = cmap(np.linspace(0, 1, pars['n_neurons']))
-#     colors_avg_spikes = ['purple', 'blue', 'green', 'yellow', 'black']
-#
-#     alpha = 1 / pars['trials']
-#
-#     #axis labels
-#     xlabels = ['Steady State', 'Ramp', 'Sine', 'Shifted Sine']
-#     ylabels = ['N 1-40', 'N 41-80', 'N 81-120', 'N121-160']
-#
-#     #smooting indicator
-#
-#     # Plot primary y-axis (raster plot)
-#     for neuron in tqdm(range(pars['n_neurons']), desc='Plotting spikes', unit='step'):
-#         for trial in range(pars['trials']):
-#             idx = neuron * pars['trials'] + trial
-#             if spike_trains[idx].sum() > 0.:
-#                 t_st = range_t[spike_trains[idx] > 0.5]  # spike times
-#                 y_position = neuron
-#                 axs[0, 0].plot(t_st, np.ones(len(t_st)) * y_position,
-#                                '|',
-#                                color=colors[neuron],
-#                                ms=7,
-#                                markeredgewidth=0.5,
-#                                alpha=alpha)
-#
-#     # y1 settings
-#     axs[0, 0].set_xlim([range_t[0], range_t[-1]])
-#     axs[0, 0].set_ylim([-0.5, pars['n_neurons'] - 0.5])
-#
-#     yticks = np.arange(0, pars['n_neurons'], 10)
-#     axs[0, 0].set_yticks(yticks)
-#     axs[0, 0].set_yticklabels(yticks + 1, fontsize=20)
-#     axs[0, 0].tick_params(axis='x', labelsize=20)
-#
-#     axs[0, 0].set_title(f"N = {pars['n_neurons']},"
-#                         f" Neurons per LV = {pars['n_neurons'] // lv_matrix.shape[1]},"
-#                         f" Trials per Neuron = {pars['trials']},"
-#                         f" Noise amp = {pars['noise_amp']}",
-#                         fontsize=20)
-#
-#     axs[0, 0].text(0.5, 1.05, 'Simulation spike trains with latent variables',
-#                    ha='center', va='bottom', fontsize=30,
-#                    transform=axs[0, 0].transAxes)
-#     axs[0, 0].set_xlabel('Time (ms)', fontsize=20)
-#     axs[0, 0].set_ylabel('Neuron ID', fontsize=20)
-#     #axs[0, 0].legend(loc="upper left")
-#
-#     # initiate secondary y axis
-#     y2 = axs[0, 0].twinx()
-#
-#     # Plot secondary y axis (line graph)
-#     for i in range(count_modes_avg.shape[0]):
-#         x_smooth = np.linspace(x_counts.min(), x_counts.max(), 800)
-#         spl = mis(x_counts, count_modes_avg[i, :], k=5)
-#         y_smooth = spl(x_smooth)
-#         y2.plot(x_smooth, y_smooth,
-#                 label=f"{xlabels[i]}",
-#                 color=colors_avg_spikes[i],
-#                 linewidth=5)
-#
-#     # y2 settings
-#     y2.set_xlim([range_t[0], range_t[-1]])
-#     y2.set_ylabel('Spike counts', fontsize=20)
-#
-#     y2.tick_params(axis='y', labelsize=20)
-#     y2.legend(loc="upper right", fontsize=20)
-#
-#     print('Plotting the rest...')
-#     plt.show()
-
-
 def plots(pars,
           range_t,
           spike_trains,
@@ -442,7 +359,7 @@ def plots(pars,
 
     #Create colormap for plot coloring
     cmap = plt.cm.get_cmap('viridis', pars['n_neurons'])
-    colors = cmap(np.linspace(0, 1, pars['n_neurons']))
+    colors = ['purple', 'blue'] #cmap(np.linspace(0, 1, pars['n_neurons']))
     colors_avg_spikes = ['purple', 'blue', 'gray', 'yellow', 'black']
     alphas = [1, 1, 0.5]
 
@@ -455,15 +372,19 @@ def plots(pars,
     #smooting indicator
 
     # Plot primary y-axis (raster plot)
-    for neuron in range(pars['n_neurons']): #tqdm(range(pars['n_neurons']), desc='Plotting spikes', unit='step', position=0, leave=True)
+    for neuron in range(pars['n_neurons']):
         for trial in range(pars['trials']):
             idx = neuron * pars['trials'] + trial
             if spike_trains[idx].sum() > 0.:
                 t_st = range_t[spike_trains[idx] > 0.5]  # spike times
                 y_position = neuron
+
+                # Determine color based on neuron index
+                color_index = 0 if neuron < pars['n_neurons'] // 2 else 1
+
                 axs[0, 0].plot(t_st, np.ones(len(t_st)) * y_position,
                                '|',
-                               color=colors[neuron],
+                               color=colors[color_index],
                                ms=7,
                                markeredgewidth=0.5,
                                alpha=alpha)
@@ -474,20 +395,29 @@ def plots(pars,
 
     yticks = np.arange(0, pars['n_neurons'], 10)
     axs[0, 0].set_yticks(yticks)
-    axs[0, 0].set_yticklabels(yticks + 1, fontsize=20)
-    axs[0, 0].tick_params(axis='x', labelsize=20)
+    axs[0, 0].set_yticklabels(yticks + 1, fontsize=30)
+    axs[0, 0].tick_params(axis='x', labelsize=30)
 
-    axs[0, 0].set_title(f"N = {pars['n_neurons']},"
-                        f" Neurons per LV = {pars['n_neurons'] // lv_matrix.shape[1]},"
-                        f" Trials per Neuron = {pars['trials']},"
-                        f" Noise amp = {pars['noise_amp']}",
-                        fontsize=20)
+    xticks = range(0, len(range_t), 1000)
+    xticklabels = np.arange(0, len(xticks))
+    axs[0, 0].set_xticks(xticks)
+    axs[0, 0].set_xticklabels(xticklabels, fontsize=30)
 
-    axs[0, 0].text(0.5, 1.05, 'Simulation spike trains with latent variables',
-                   ha='center', va='bottom', fontsize=30,
-                   transform=axs[0, 0].transAxes)
-    axs[0, 0].set_xlabel('Time (ms)', fontsize=20)
-    axs[0, 0].set_ylabel('Neuron ID', fontsize=20)
+
+    axs[0, 0].set_title('Simulation spike trains\n'
+                        ' with latent variables',
+                        fontsize=40)
+    # axs[0, 0].set_title(f"N = {pars['n_neurons']},"
+    #                     f" Neurons per LV = {pars['n_neurons'] // lv_matrix.shape[1]},"
+    #                     f" Trials per Neuron = {pars['trials']},"
+    #                     f" Noise amp = {pars['noise_amp']}",
+    #                     fontsize=30)
+
+    # axs[0, 0].text(0.5, 1.05, '',
+    #                ha='center', va='bottom', fontsize=40,
+    #                transform=axs[0, 0].transAxes)
+    axs[0, 0].set_xlabel('Time (s)', fontsize=30)
+    axs[0, 0].set_ylabel('Neuron ID', fontsize=30)
 
     # initiate secondary y axis
     y2 = axs[0, 0].twinx()
@@ -509,10 +439,10 @@ def plots(pars,
 
     # y2 settings
     y2.set_xlim([range_t[0], range_t[-1]])
-    y2.set_ylabel('Spike counts', fontsize=20)
+    y2.set_ylabel('Spike counts', fontsize=30)
 
-    y2.tick_params(axis='y', labelsize=20)
-    y2.legend(loc="upper left", fontsize=20)
+    y2.tick_params(axis='y', labelsize=30)
+    y2.legend(loc="upper right", fontsize=30)
 
     # print('Plotting the rest...')
 
@@ -605,12 +535,12 @@ def plots(pars,
         #                label=f"Avg PC{i+1}",
         #                linewidth=5,)
 
-    axs[0, 1].set_title(f'PCA', fontsize=30) #Smoothing factor = {pars['window_size']}
-    axs[0, 1].set_xlabel('Time (100 ms)', fontsize=20)
-    axs[0, 1].set_ylabel('Component value', fontsize=20)
-    axs[0, 1].legend(loc='upper right', fontsize=20)
-    axs[0, 1].tick_params(axis='x', labelsize=20)
-    axs[0, 1].tick_params(axis='y', labelsize=20)
+    axs[0, 1].set_title(f'PCA', fontsize=40) #Smoothing factor = {pars['window_size']}
+    axs[0, 1].set_xlabel('Time (100 ms)', fontsize=30)
+    axs[0, 1].set_ylabel('Component value', fontsize=30)
+    axs[0, 1].legend(loc='upper right', fontsize=30)
+    axs[0, 1].tick_params(axis='x', labelsize=30)
+    axs[0, 1].tick_params(axis='y', labelsize=30)
 
     #LV-->PC Correlation matrix
     axs_corr = axs[1, 1]
@@ -712,12 +642,13 @@ def plots(pars,
                       label=f'{int_boot:.3f}', s=100, zorder=3)
 
     #axis settings
-    axs[1, 0].set_title(f'PCA Explained Variance vs. bootstrap ({n_it} It.)', fontsize=30)
-    axs[1, 0].set_xlabel('Principal component', fontsize=20)
-    axs[1, 0].set_ylabel('Explained variance (%)', fontsize=20)
-    axs[1, 0].legend(loc='upper right', fontsize=20)
-    axs[1, 0].tick_params(axis='x', labelsize=20)
-    axs[1, 0].tick_params(axis='y', labelsize=20)
+    axs[1, 0].set_title(f'PCA Explained Variance Ratio\n'
+                        f'vs. Bootstrap', fontsize=40)
+    axs[1, 0].set_xlabel('Principal component', fontsize=30)
+    axs[1, 0].set_ylabel('Explained variance (%)', fontsize=30)
+    axs[1, 0].legend(loc='upper right', fontsize=30)
+    axs[1, 0].tick_params(axis='x', labelsize=30)
+    axs[1, 0].tick_params(axis='y', labelsize=30)
 
     #Plot alpha table
 

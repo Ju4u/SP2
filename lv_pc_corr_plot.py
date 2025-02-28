@@ -23,7 +23,7 @@ colors = ["purple", "blue", "green", "orange", "red", "brown"]
 corrs = ['0.0', '0.0', '0.17', '0.17', '0.41', '0.41', '0.63', '0.63', '0.83', '0.83', '1.0', '1.0']
 
 # Create a single figure
-plt.figure(figsize=(12, 6))
+plt.figure(figsize=(16, 8))
 
 # Loop through each **pair** of columns (1&2, 3&4, etc.)
 for i in range(0, merged_array.shape[1], 2):
@@ -39,17 +39,17 @@ for i in range(0, merged_array.shape[1], 2):
                      alpha=0.3)  # Slightly higher alpha for distinction
 
 # Adjusting labels and title
-plt.xlabel("Value", fontsize=14)
-plt.ylabel("Frequency", fontsize=14)
-plt.title(f"Distribution of All Columns (N={merged_array.shape[0]})",
-          fontsize=14)
+plt.xlabel("r(PC-LV)", fontsize=20)
+plt.ylabel("Frequency", fontsize=20)
+plt.title(f"(N={merged_array.shape[0]})",
+          fontsize=20)
 # Customizing legend
-plt.legend(title="Principal Components", loc="upper left", fontsize=12)
+plt.legend(loc="upper left", fontsize=20)
 
 # Make the grid less intrusive and improve ticks
 plt.grid(True, linestyle='--', alpha=0.5)
-plt.xticks(fontsize=12)
-plt.yticks(fontsize=12)
+plt.xticks(fontsize=20)
+plt.yticks(fontsize=20)
 plt.xlim(0, 1)
 plt.ylim(0, 100)
 
